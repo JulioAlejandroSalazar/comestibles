@@ -22,7 +22,7 @@ public class BoletaServiceImpl implements BoletaService {
     private final String bucket = "tiendacomestibles";
 
     @Override
-    public String generarYSubirBoleta(List<String> comidaIds) {
+    public Boleta generarYSubirBoleta(List<String> comidaIds) {
         List<Comida> comidas = comidaIds.stream()
             .map(comidaRepository::findComidaByID)
             .filter(Objects::nonNull)
@@ -40,7 +40,6 @@ public class BoletaServiceImpl implements BoletaService {
             .map(S3ObjectDto::getKey)
             .collect(Collectors.toList());
 
-        // Obtener el numero maximo de carpeta actual
         int maxFolder = keys.stream()
             .map(key -> {
                 String[] parts = key.split("/");
@@ -62,8 +61,9 @@ public class BoletaServiceImpl implements BoletaService {
             "text/plain"
         );
 
-        return boleta.getId();
+        return boleta;
     }
+
 
     @Override
     public byte[] descargarBoleta(String boletaId) {
@@ -71,14 +71,49 @@ public class BoletaServiceImpl implements BoletaService {
     }
 
     @Override
-    public List<String> listarBoletas() {
+    public List<Boleta> listarBoletas() {
         return s3Service.listObjects(bucket).stream()
-                .map(obj -> obj.getKey())
-                .collect(Collectors.toList());
+            .map(obj -> obj.getKey())
+            .filter(key -> key.endsWith(".txt"))
+            .map(key -> {
+                byte[] contenido = s3Service.downloadAsBytes(bucket, key);
+                String texto = new String(contenido, StandardCharsets.UTF_8);
+                return parseBoletaDesdeTexto(texto);
+            })
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
     }
+
 
     @Override
     public void eliminarBoleta(String boletaId) {
         s3Service.deleteObject(bucket, boletaId + ".txt");
     }
+
+
+
+    private Boleta parseBoletaDesdeTexto(String texto) {
+        try {
+            String[] lineas = texto.split("\n");
+            String id = lineas[0].replace("Boleta ID: ", "").trim();
+    
+            List<Comida> comidas = new java.util.ArrayList<>();
+            int total = 0;
+    
+            for (int i = 1; i < lineas.length - 1; i++) {
+                String linea = lineas[i].trim().substring(2);
+                String[] partes = linea.split(": \\$");
+                String nombre = partes[0];
+                int precio = Integer.parseInt(partes[1]);
+                comidas.add(new Comida(null, nombre, precio));
+            }
+    
+            total = Integer.parseInt(lineas[lineas.length - 1].replace("Total: $", "").trim());
+    
+            return new Boleta(id, comidas, total);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
 }

@@ -1,19 +1,14 @@
 package cl.duoc.comestibles.controller;
 
 import java.util.List;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import cl.duoc.comestibles.dto.ComidaDto;
 import cl.duoc.comestibles.model.Comida;
 import cl.duoc.comestibles.services.ComidaService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PutMapping;
-
 
 @RestController
 @RequestMapping("/comida")
@@ -23,48 +18,59 @@ public class ComidaController {
     private final ComidaService comidaService;
 
     @GetMapping
-    public ResponseEntity<List<Comida>> getAllComida() {
+    public ResponseEntity<List<ComidaDto>> getAllComida() {
         List<Comida> comidas = comidaService.getAllComidas();
-        if(comidas.isEmpty()) {
+        if (comidas.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(comidas);
+        List<ComidaDto> dtos = comidas.stream()
+            .map(this::toDto)
+            .toList();
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Comida> getComidaById(@PathVariable String id) {
+    public ResponseEntity<ComidaDto> getComidaById(@PathVariable String id) {
         Comida comida = comidaService.getComidaById(id);
-        if(comida == null) {
+        if (comida == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(comida);
+        return ResponseEntity.ok(toDto(comida));
     }
-    
 
     @PostMapping
-    public ResponseEntity<Void> createComidaEntity(@RequestBody Comida comida) {
-        comidaService.createComida(comida);
+    public ResponseEntity<Void> createComidaEntity(@RequestBody ComidaDto dto) {
+        comidaService.createComida(toEntity(dto));
         return ResponseEntity.status(201).build();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Comida> updateComida(@PathVariable String id, @RequestBody Comida comida) {
-        if(!id.equals(comida.getId()) ||
-            comidaService.getComidaById(id).equals(comida) ||
-            comidaService.getComidaById(id) == null) {
-                return ResponseEntity.badRequest().build();
-            }
-        comidaService.updateComida(id, comida);
+    public ResponseEntity<Void> updateComida(@PathVariable String id, @RequestBody ComidaDto dto) {
+        if (!id.equals(dto.getId()) || comidaService.getComidaById(id) == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        comidaService.updateComida(id, toEntity(dto));
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteComida(@PathVariable String id) {
-        if(comidaService.getComidaById(id) == null) {
+        if (comidaService.getComidaById(id) == null) {
             return ResponseEntity.badRequest().build();
         }
         comidaService.deleteComida(id);
         return ResponseEntity.noContent().build();
     }
+
     
+
+    // conversiones dto
+
+    private ComidaDto toDto(Comida comida) {
+        return new ComidaDto(comida.getId(), comida.getNombre(), comida.getPrecio());
+    }
+
+    private Comida toEntity(ComidaDto dto) {
+        return new Comida(dto.getId(), dto.getNombre(), dto.getPrecio());
+    }
 }

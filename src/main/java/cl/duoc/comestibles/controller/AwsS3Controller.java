@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import cl.duoc.comestibles.dto.S3ObjectDto;
 import cl.duoc.comestibles.services.AwsS3Service;
+import cl.duoc.comestibles.services.EfsService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -24,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 public class AwsS3Controller {
 
 	private final AwsS3Service awsS3Service;
+
+	private final EfsService efsService;
 
 	// Listar objetos en un bucket
 	@GetMapping("/{bucket}/objects")
@@ -53,9 +56,15 @@ public class AwsS3Controller {
 	@PostMapping("/{bucket}/object/{key}")
 	public ResponseEntity<Void> uploadObject(@PathVariable String bucket, @PathVariable String key,
 			@RequestParam("file") MultipartFile file) {
-
-		awsS3Service.upload(bucket, key, file);
-		return ResponseEntity.ok().build();
+		
+		try{
+			efsService.saveToEfs(key, file);
+			awsS3Service.upload(bucket, key, file);
+			return ResponseEntity.ok().build();
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.internalServerError().build();
+		}
 	}
 
 	// Mover objeto dentro del mismo bucket

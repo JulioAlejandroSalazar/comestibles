@@ -2,10 +2,12 @@ package cl.duoc.comestibles.services;
 
 import java.util.List;
 
+import cl.duoc.comestibles.model.Boleta;
+
 public interface BoletaService {
-    String generarYSubirBoleta(List<String> comidaIds);
+    Boleta generarYSubirBoleta(List<String> comidaIds);
     byte[] descargarBoleta(String boletaId);
-    List<String> listarBoletas();
+    List<Boleta> listarBoletas();
     void eliminarBoleta(String boletaId);
 }
 
