@@ -81,4 +81,50 @@ public class AwsS3Controller {
 		awsS3Service.deleteObject(bucket, key);
 		return ResponseEntity.noContent().build();
 	}
+
+
+
+	
+	// EFS
+
+	// descargar archivo
+	@GetMapping("/efs/object/{filename}")
+	public ResponseEntity<byte[]> downloadFromEfs(@PathVariable String filename) {
+		try {
+			byte[] fileBytes = efsService.readFromEfs(filename);
+			return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+				.contentType(MediaType.APPLICATION_OCTET_STREAM)
+				.body(fileBytes);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.internalServerError().build();
+		}
+	}
+
+	// listar archivos
+	@GetMapping("/efs/objects")
+	public ResponseEntity<List<String>> listFilesInEfs() {
+		try {
+			List<String> filenames = efsService.listFiles();
+			return ResponseEntity.ok(filenames);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.internalServerError().build();
+		}
+	}
+	
+	// borrar archivo
+	@DeleteMapping("/efs/object/{filename}")
+	public ResponseEntity<Void> deleteFromEfs(@PathVariable String filename) {
+		try {
+			efsService.deleteFromEfs(filename);
+			return ResponseEntity.noContent().build();
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.internalServerError().build();
+		}
+	}
+
+
 }
