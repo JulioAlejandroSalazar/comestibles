@@ -1,5 +1,6 @@
 package cl.duoc.comestibles.controller;
 
+import java.io.File;
 import java.util.List;
 
 import org.springframework.http.HttpHeaders;
@@ -55,17 +56,18 @@ public class AwsS3Controller {
 	// Subir archivo
 	@PostMapping("/{bucket}/object/{key}")
 	public ResponseEntity<Void> uploadObject(@PathVariable String bucket, @PathVariable String key,
-			@RequestParam("file") MultipartFile file) {
-		
-		try{
-			efsService.saveToEfs(key, file);
-			awsS3Service.upload(bucket, key, file);
+											 @RequestParam("file") MultipartFile file) {
+		try {
+			File savedFile = efsService.saveToEfs(key, file);	
+			awsS3Service.upload(bucket, key, savedFile);
+	
 			return ResponseEntity.ok().build();
 		} catch (Exception e) {
 			e.printStackTrace();
 			return ResponseEntity.internalServerError().build();
 		}
 	}
+	
 
 	// Mover objeto dentro del mismo bucket
 	@PostMapping("/{bucket}/move")
