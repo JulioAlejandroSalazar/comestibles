@@ -6,11 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import cl.duoc.comestibles.dto.S3ObjectDto;
-import io.awspring.cloud.s3.ObjectMetadata;
 import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -78,23 +75,18 @@ public class AwsS3Service {
 	}
 
 	public void upload(String bucket, String key, File file) {
-		// abrir InputStream del File y subir
 		try (InputStream is = new FileInputStream(file)) {
 			PutObjectRequest putObjectRequest = PutObjectRequest.builder()
 				.bucket(bucket)
 				.key(key)
 				.contentLength(file.length())
-				// .contentType(...) si quieres
 				.build();
 	
 			s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(is, file.length()));
 		} catch (IOException e) {
 			throw new RuntimeException("Error uploading file to S3", e);
 		}
-	}
-	
-
-	
+	}	
 
 	// Mover objeto (copiar + borrar)
 	public void moveObject(String bucket, String sourceKey, String destKey) {

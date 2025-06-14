@@ -2,7 +2,6 @@ package cl.duoc.comestibles.controller;
 
 import java.io.File;
 import java.util.List;
-
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.itextpdf.kernel.pdf.PdfDocument;
 
 import cl.duoc.comestibles.dto.S3ObjectDto;
 import cl.duoc.comestibles.services.AwsS3Service;
@@ -67,6 +68,23 @@ public class AwsS3Controller {
 			return ResponseEntity.internalServerError().build();
 		}
 	}
+
+	@PostMapping("/{bucket}/object/{key}/pdf")
+    public ResponseEntity<String> uploadPdf(@PathVariable String bucket, @PathVariable String key,
+                                            @RequestParam("file") MultipartFile file) {
+        try {
+            if (!"application/pdf".equalsIgnoreCase(file.getContentType())) {
+                return ResponseEntity.badRequest().body("El archivo debe ser un PDF");
+            }
+
+            awsS3Service.upload(bucket, key, file.getBytes(), "application/pdf");
+
+            return ResponseEntity.ok("PDF subido correctamente");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Error al subir PDF");
+        }
+    }
 	
 
 	// Mover objeto dentro del mismo bucket
