@@ -39,12 +39,12 @@ public class AwsS3Controller {
 		return ResponseEntity.ok(dtoList);
 	}
 
-	// Obtener objeto como stream
-	@GetMapping("/{bucket}/object/stream/{key}")
-	public ResponseEntity<byte[]> getObjectAsStream(@PathVariable String bucket, @PathVariable String key) {
-		byte[] fileBytes = awsS3Service.downloadAsBytes(bucket, key);
-		return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + key)
-				.contentType(MediaType.APPLICATION_OCTET_STREAM).body(fileBytes);
+	@GetMapping("/s3/{bucket}/object/stream")
+	public ResponseEntity<byte[]> getObjectStream(@PathVariable String bucket, @RequestParam String key) {
+		byte[] content = awsS3Service.downloadAsBytes(bucket, key);
+		return ResponseEntity.ok()
+			.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + key + "\"")
+			.body(content);
 	}
 
 	// Descargar archivo como byte[]
