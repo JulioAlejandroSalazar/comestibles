@@ -2,6 +2,8 @@ package cl.duoc.comestibles.controller;
 
 import java.io.File;
 import java.util.List;
+
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +23,8 @@ import cl.duoc.comestibles.dto.S3ObjectDto;
 import cl.duoc.comestibles.services.AwsS3Service;
 import cl.duoc.comestibles.services.EfsService;
 import lombok.RequiredArgsConstructor;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @RestController
 @RequestMapping("/s3")
@@ -39,13 +43,23 @@ public class AwsS3Controller {
 		return ResponseEntity.ok(dtoList);
 	}
 
-	@GetMapping("/s3/{bucket}/object/stream")
-	public ResponseEntity<byte[]> getObjectStream(@PathVariable String bucket, @RequestParam String key) {
-		byte[] content = awsS3Service.downloadAsBytes(bucket, key);
+	// Obtener objeto como stream
+	@GetMapping("/{bucket}/object/stream")
+	public ResponseEntity<InputStreamResource> streamObject(@PathVariable String bucket, @RequestParam("key") String key) {
+		ResponseInputStream<GetObjectResponse> s3Stream = awsS3Service.getObjectInputStream(bucket, key);
+
+		String contentType = s3Stream.response().contentType();
+		if (contentType == null || contentType.isBlank()) {
+			contentType = "application/octet-stream";
+		}
+
 		return ResponseEntity.ok()
-			.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + key + "\"")
-			.body(content);
+				.header(HttpHeaders.CONTENT_DISPOSITION,
+						"inline; filename=" + key.substring(key.lastIndexOf('/') + 1))
+				.contentType(MediaType.parseMediaType(contentType))
+				.body(new InputStreamResource(s3Stream));
 	}
+
 
 	// Descargar archivo como byte[]
 	@GetMapping("/{bucket}/object")
