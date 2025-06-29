@@ -112,21 +112,26 @@ public class AwsS3Controller {
 	}
 
 	// Borrar objeto
-	@DeleteMapping("/{bucket}/object")
-	public ResponseEntity<Void> deleteObject(@PathVariable String bucket, @RequestParam("key") String key) {
+	@DeleteMapping("/{bucket}/object/{key:.+}")
+	public ResponseEntity<Void> deleteObject(
+			@PathVariable String bucket,
+			@PathVariable String key) {
 		awsS3Service.deleteObject(bucket, key);
 		return ResponseEntity.noContent().build();
 	}
 	
+	
 
 	// actualizar objeto
-	@PutMapping("/{bucket}/object")
-	public ResponseEntity<String> updateObject(@PathVariable String bucket, @RequestParam("key") String key, @RequestParam("file") MultipartFile file) {
+	@PutMapping("/{bucket}/object/{key:.+}")
+	public ResponseEntity<String> updateObject(
+			@PathVariable String bucket,
+			@PathVariable String key,
+			@RequestParam("file") MultipartFile file) {
 		try {
 			if (!"application/pdf".equalsIgnoreCase(file.getContentType())) {
 				return ResponseEntity.badRequest().body("El archivo debe ser un PDF");
 			}
-	
 			awsS3Service.upload(bucket, key, file.getBytes(), file.getContentType());
 			return ResponseEntity.ok("Archivo actualizado correctamente");
 		} catch (Exception e) {
@@ -134,6 +139,7 @@ public class AwsS3Controller {
 			return ResponseEntity.internalServerError().body("Error al actualizar archivo");
 		}
 	}
+	
 	
 	
 
