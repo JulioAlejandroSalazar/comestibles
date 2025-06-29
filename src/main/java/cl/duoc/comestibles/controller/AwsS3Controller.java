@@ -22,6 +22,7 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import cl.duoc.comestibles.dto.S3ObjectDto;
 import cl.duoc.comestibles.services.AwsS3Service;
 import cl.duoc.comestibles.services.EfsService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -112,13 +113,15 @@ public class AwsS3Controller {
 	}
 
 	// Borrar objeto
-	@DeleteMapping("/{bucket}/object/{key:.+}")
-	public ResponseEntity<Void> deleteObject(
-			@PathVariable String bucket,
-			@PathVariable String key) {
+	@DeleteMapping("/{bucket}/object/**")
+	public ResponseEntity<Void> deleteObject(@PathVariable String bucket, HttpServletRequest request) {
+
+		String path = request.getRequestURI();
+		String key = path.substring(path.indexOf("/object/") + 8);
 		awsS3Service.deleteObject(bucket, key);
 		return ResponseEntity.noContent().build();
 	}
+
 	
 	
 
