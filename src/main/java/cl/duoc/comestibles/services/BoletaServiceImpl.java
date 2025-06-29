@@ -6,7 +6,8 @@ import cl.duoc.comestibles.model.Comida;
 import cl.duoc.comestibles.repository.ComidaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
+import java.io.File;
+import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +20,7 @@ public class BoletaServiceImpl implements BoletaService {
     private final AwsS3Service s3Service;
     private final ComidaRepository comidaRepository;
 
-    private final String bucket = "tiendacomestibles";
+    private final String bucket = "comestiblesbucket";
 
     @Override
     public Boleta generarYSubirBoleta(List<String> comidaIds) {
@@ -29,12 +30,6 @@ public class BoletaServiceImpl implements BoletaService {
             .collect(Collectors.toList());
 
         Boleta boleta = new Boleta(comidas);
-
-        StringBuilder contenido = new StringBuilder("Boleta ID: " + boleta.getId() + "\n");
-        for (Comida c : comidas) {
-            contenido.append("- ").append(c.getNombre()).append(": $").append(c.getPrecio()).append("\n");
-        }
-        contenido.append("Total: $").append(boleta.getTotal());
 
         List<String> keys = s3Service.listObjects(bucket).stream()
             .map(S3ObjectDto::getKey)
@@ -54,12 +49,37 @@ public class BoletaServiceImpl implements BoletaService {
 
         int nuevaCarpeta = maxFolder + 1;
 
-        String key = nuevaCarpeta + "/" + boleta.getId() + ".txt";
-        s3Service.upload(bucket,
-            key,
-            contenido.toString().getBytes(StandardCharsets.UTF_8),
-            "text/plain"
-        );
+        // GENERAR PDF
+        try {
+            File tempFile = File.createTempFile("boleta-" + boleta.getId(), ".pdf");
+
+            var writer = new com.itextpdf.kernel.pdf.PdfWriter(new FileOutputStream(tempFile));
+            var pdf = new com.itextpdf.kernel.pdf.PdfDocument(writer);
+            var document = new com.itextpdf.layout.Document(pdf);
+
+            document.add(new com.itextpdf.layout.element.Paragraph("BOLETA ID: " + boleta.getId()));
+            document.add(new com.itextpdf.layout.element.Paragraph(" "));
+            document.add(new com.itextpdf.layout.element.Paragraph("DETALLE:"));
+            document.add(new com.itextpdf.layout.element.Paragraph("-----------------------------------"));
+
+            for (Comida c : comidas) {
+                document.add(new com.itextpdf.layout.element.Paragraph("- " + c.getNombre() + ": $" + c.getPrecio()));
+            }
+
+            document.add(new com.itextpdf.layout.element.Paragraph("-----------------------------------"));
+            document.add(new com.itextpdf.layout.element.Paragraph("TOTAL: $" + boleta.getTotal()));
+            document.add(new com.itextpdf.layout.element.Paragraph(" "));
+            document.add(new com.itextpdf.layout.element.Paragraph("Gracias por su compra."));
+
+            document.close();
+
+            // subirlo a S3
+            String key = nuevaCarpeta + "/" + boleta.getId() + ".pdf";
+            s3Service.upload(bucket, key, tempFile);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error generando PDF de la boleta", e);
+        }
 
         return boleta;
     }
@@ -67,14 +87,16 @@ public class BoletaServiceImpl implements BoletaService {
 
     @Override
     public byte[] descargarBoleta(String boletaId) {
-        return s3Service.downloadAsBytes(bucket, boletaId + ".txt");
+        return s3Service.downloadAsBytes(bucket, boletaId + ".pdf");
     }
+    
+    
 
     @Override
     public List<Boleta> listarBoletas() {
         return s3Service.listObjects(bucket).stream()
             .map(obj -> obj.getKey())
-            .filter(key -> key.endsWith(".txt"))
+            .filter(key -> key.endsWith(".pdf"))
             .map(key -> {
                 byte[] contenido = s3Service.downloadAsBytes(bucket, key);
                 String texto = new String(contenido, StandardCharsets.UTF_8);
@@ -87,7 +109,7 @@ public class BoletaServiceImpl implements BoletaService {
 
     @Override
     public void eliminarBoleta(String boletaId) {
-        s3Service.deleteObject(bucket, boletaId + ".txt");
+        s3Service.deleteObject(bucket, boletaId + ".pdf");
     }
 
 

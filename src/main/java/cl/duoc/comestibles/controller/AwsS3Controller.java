@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,12 +48,14 @@ public class AwsS3Controller {
 	}
 
 	// Descargar archivo como byte[]
-	@GetMapping("/{bucket}/object/{key}")
-	public ResponseEntity<byte[]> downloadObject(@PathVariable String bucket, @PathVariable String key) {
+	@GetMapping("/{bucket}/object")
+	public ResponseEntity<byte[]> downloadObject(@PathVariable String bucket, @RequestParam("key") String key) {
 		byte[] fileBytes = awsS3Service.downloadAsBytes(bucket, key);
-		return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + key)
-				.contentType(MediaType.APPLICATION_OCTET_STREAM).body(fileBytes);
-	}
+		return ResponseEntity.ok()
+			.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + key.substring(key.lastIndexOf('/') + 1))
+			.contentType(MediaType.APPLICATION_OCTET_STREAM)
+			.body(fileBytes);
+	}	
 
 	// Subir archivo
 	@PostMapping("/{bucket}/object/{key}")
@@ -84,8 +87,7 @@ public class AwsS3Controller {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error al subir PDF");
         }
-    }
-	
+    }	
 
 	// Mover objeto dentro del mismo bucket
 	@PostMapping("/{bucket}/move")
@@ -101,6 +103,26 @@ public class AwsS3Controller {
 		awsS3Service.deleteObject(bucket, key);
 		return ResponseEntity.noContent().build();
 	}
+
+	// actualizar objeto
+	@PutMapping("/{bucket}/object/{key}")
+	public ResponseEntity<String> updateObject(
+			@PathVariable String bucket,
+			@PathVariable String key,
+			@RequestParam("file") MultipartFile file) {
+		try {
+			if (!"application/pdf".equalsIgnoreCase(file.getContentType())) {
+				return ResponseEntity.badRequest().body("El archivo debe ser un PDF");
+			}
+
+			awsS3Service.upload(bucket, key, file.getBytes(), file.getContentType());
+			return ResponseEntity.ok("Archivo actualizado correctamente");
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.internalServerError().body("Error al actualizar archivo");
+		}
+	}
+
 
 
 
