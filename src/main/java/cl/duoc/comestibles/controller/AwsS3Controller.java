@@ -112,11 +112,12 @@ public class AwsS3Controller {
 	}
 
 	// Borrar objeto
-	@DeleteMapping("/{bucket}/object/{key}")
-	public ResponseEntity<Void> deleteObject(@PathVariable String bucket, @PathVariable String key) {
+	@DeleteMapping("/{bucket}/object")
+	public ResponseEntity<Void> deleteObject(@PathVariable String bucket, @RequestParam("key") String key) {
 		awsS3Service.deleteObject(bucket, key);
 		return ResponseEntity.noContent().build();
 	}
+	
 
 	// actualizar objeto
 	@PutMapping("/{bucket}/object")
@@ -133,6 +134,7 @@ public class AwsS3Controller {
 			return ResponseEntity.internalServerError().body("Error al actualizar archivo");
 		}
 	}
+	
 	
 
 
