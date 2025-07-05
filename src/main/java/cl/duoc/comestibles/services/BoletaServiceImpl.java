@@ -1,10 +1,12 @@
 package cl.duoc.comestibles.services;
 
+import cl.duoc.comestibles.config.RabbitMQConfig;
 import cl.duoc.comestibles.dto.S3ObjectDto;
 import cl.duoc.comestibles.model.Boleta;
 import cl.duoc.comestibles.model.Comida;
 import cl.duoc.comestibles.repository.ComidaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -19,6 +21,8 @@ public class BoletaServiceImpl implements BoletaService {
 
     private final AwsS3Service s3Service;
     private final ComidaRepository comidaRepository;
+    private final RabbitTemplate rabbitTemplate;
+
 
     private final String bucket = "comestiblesbucket";
 
@@ -76,6 +80,9 @@ public class BoletaServiceImpl implements BoletaService {
             // subirlo a S3
             String key = nuevaCarpeta + "/" + boleta.getId() + ".pdf";
             s3Service.upload(bucket, key, tempFile);
+
+            // enviar boleta a la cola
+            rabbitTemplate.convertAndSend(RabbitMQConfig.MAIN_EXCHANGE, "", boleta);
 
         } catch (Exception e) {
             throw new RuntimeException("Error generando PDF de la boleta", e);

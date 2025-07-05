@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class BoletaController {
 
-    private final BoletaService boletaService;
+    private final BoletaService boletaService;    
+    private final RabbitTemplate rabbitTemplate;
 
     @PostMapping
     public ResponseEntity<BoletaDto> crearBoleta(@RequestBody List<String> comidaIds) {
@@ -74,4 +76,19 @@ public class BoletaController {
 
         return new Boleta(id, comidas, dto.getTotal());
     }
+
+
+
+
+    // rabbit
+
+    @GetMapping("/leer")
+    public Boleta leerSiguienteMensaje() {
+        Boleta boleta = (Boleta) rabbitTemplate.receiveAndConvert("myQueue");
+        if (boleta == null) {
+            throw new RuntimeException("No hay mensajes pendientes en la cola");
+        }
+        return boleta;
+    }
+
 }
