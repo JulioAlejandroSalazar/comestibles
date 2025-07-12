@@ -32,13 +32,13 @@ public class BoletaServiceImpl implements BoletaService {
             .map(comidaRepository::findComidaByID)
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
-
+    
         Boleta boleta = new Boleta(comidas);
-
+    
         List<String> keys = s3Service.listObjects(bucket).stream()
             .map(S3ObjectDto::getKey)
             .collect(Collectors.toList());
-
+    
         int maxFolder = keys.stream()
             .map(key -> {
                 String[] parts = key.split("/");
@@ -50,47 +50,47 @@ public class BoletaServiceImpl implements BoletaService {
             })
             .max(Integer::compareTo)
             .orElse(0);
-
+    
         int nuevaCarpeta = maxFolder + 1;
-
-        // GENERAR PDF
+    
         try {
             File tempFile = File.createTempFile("boleta-" + boleta.getId(), ".pdf");
-
+    
             var writer = new com.itextpdf.kernel.pdf.PdfWriter(new FileOutputStream(tempFile));
             var pdf = new com.itextpdf.kernel.pdf.PdfDocument(writer);
             var document = new com.itextpdf.layout.Document(pdf);
-
-            document.add(new com.itextpdf.layout.element.Paragraph("BOLETA ID: " + boleta.getId()));
-            document.add(new com.itextpdf.layout.element.Paragraph(" "));
-            document.add(new com.itextpdf.layout.element.Paragraph("DETALLE:"));
-            document.add(new com.itextpdf.layout.element.Paragraph("-----------------------------------"));
-
+    
+            StringBuilder contenidoBoleta = new StringBuilder();
+            contenidoBoleta.append("BOLETA ID: ").append(boleta.getId()).append("\n\n");
+            contenidoBoleta.append("DETALLE:\n-----------------------------------\n");
+    
             for (Comida c : comidas) {
-                document.add(new com.itextpdf.layout.element.Paragraph("- " + c.getNombre() + ": $" + c.getPrecio()));
+                contenidoBoleta.append("- ").append(c.getNombre()).append(": $").append(c.getPrecio()).append("\n");
             }
-
-            document.add(new com.itextpdf.layout.element.Paragraph("-----------------------------------"));
-            document.add(new com.itextpdf.layout.element.Paragraph("TOTAL: $" + boleta.getTotal()));
-            document.add(new com.itextpdf.layout.element.Paragraph(" "));
-            document.add(new com.itextpdf.layout.element.Paragraph("Gracias por su compra."));
-
+    
+            contenidoBoleta.append("-----------------------------------\n");
+            contenidoBoleta.append("TOTAL: $").append(boleta.getTotal()).append("\n\n");
+            contenidoBoleta.append("Gracias por su compra.");
+    
+            // Generar PDF con el mismo contenido
+            document.add(new com.itextpdf.layout.element.Paragraph(contenidoBoleta.toString()));
             document.close();
-
-            // subirlo a S3
+    
+            // Subir PDF a S3
             String key = nuevaCarpeta + "/" + boleta.getId() + ".pdf";
             s3Service.upload(bucket, key, tempFile);
-
-            // enviar boleta a la cola
-            rabbitTemplate.convertAndSend(RabbitMQConfig.MAIN_EXCHANGE, "", boleta);
-
+    
+            // Enviar contenido a la cola
+            rabbitTemplate.convertAndSend(RabbitMQConfig.MAIN_EXCHANGE, "", contenidoBoleta.toString());
+    
         } catch (Exception e) {
             throw new RuntimeException("Error generando PDF de la boleta", e);
         }
-
+    
         return boleta;
     }
-
+    
+    
 
     @Override
     public byte[] descargarBoleta(String boletaId) {

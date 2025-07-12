@@ -1,5 +1,7 @@
 package cl.duoc.comestibles.config;
 
+import java.util.Map;
+
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -14,6 +16,9 @@ public class RabbitMQConfig {
 
 	public static final String MAIN_QUEUE = "myQueue";
 	public static final String MAIN_EXCHANGE = "myExchange";
+	public static final String DLX_QUEUE = "dlx-queue";
+	public static final String DLX_EXCHANGE = "dlx-exchange";
+	public static final String DLX_ROUTING_KEY = "dlx-routing-key";
 
 	@Bean
 	Jackson2JsonMessageConverter messageConverter() {
@@ -35,7 +40,14 @@ public class RabbitMQConfig {
 	@Bean
 	Queue myQueue() {
 
-		return new Queue(MAIN_QUEUE, true, false, false, null);
+		return new Queue(MAIN_QUEUE, true, false, false,
+				Map.of("x-dead-letter-exchange", DLX_EXCHANGE, "x-dead-letter-routing-key", DLX_ROUTING_KEY));
+	}
+
+	@Bean
+	Queue dlxQueue() {
+
+		return new Queue(DLX_QUEUE);
 	}
 
 	@Bean
@@ -45,8 +57,20 @@ public class RabbitMQConfig {
 	}
 
 	@Bean
+	DirectExchange dlxExchange() {
+
+		return new DirectExchange(DLX_EXCHANGE);
+	}
+
+	@Bean
 	Binding binding(Queue myQueue, DirectExchange myExchange) {
 
 		return BindingBuilder.bind(myQueue).to(myExchange).with("");
+	}
+
+	@Bean
+	Binding dlxBinding() {
+
+		return BindingBuilder.bind(dlxQueue()).to(dlxExchange()).with(DLX_ROUTING_KEY);
 	}
 }

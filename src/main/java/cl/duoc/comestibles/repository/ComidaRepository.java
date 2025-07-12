@@ -51,6 +51,7 @@ public class ComidaRepository {
         comidas.add(new Comida("1", "pasta", 5000));
         comidas.add(new Comida("2", "sopa", 4500));
         comidas.add(new Comida("3", "carne", 8000));
+        comidas.add(new Comida("4", "error", 1000));
     }
     
 }
